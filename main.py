@@ -3,7 +3,7 @@ from flask import Flask, request, make_response, render_template
 import base64
 import numpy as np
 import urllib
-# from mathplotlib import pyplot as pl
+
 
 app = Flask(__name__)
 
