@@ -3,6 +3,7 @@ from flask import Flask, request, make_response, render_template
 import base64
 import numpy as np
 import urllib
+# from mathplotlib import pyplot as pl
 
 app = Flask(__name__)
 
@@ -48,8 +49,8 @@ def output_photo():
 
     #переведення картинки в сірий
     imgray = cv2.cvtColor(before_img, cv2.COLOR_BGR2GRAY)
-    #маніпулятор ТРЕШ
-    thresh = 170
+    #маніпулятор ТРЕШ порогове значення
+    thresh = 100
     #бінарізація + маніпулятори(агрументи трешхолд)
     ret, thresh = cv2.threshold(imgray,thresh, 255, 0)
     #Знаходимо контури
@@ -58,12 +59,14 @@ def output_photo():
     #пусте зображення для контурів
     img_contours = np.zeros(before_img.shape)
 
+    orig_with_cont = before_img
     #малюємо контури на пустому зображенні
-    cv2.drawContours(img_contours, contours, -1, (0, 255, 0), 3)
+    cv2.drawContours(orig_with_cont, contours, -1, (0, 255, 0), 3)
 
 
     #виведення вихідного зображення
-    output_img = thresh
+    output_img = orig_with_cont
+
     retval, buffer = cv2.imencode('.jpg', output_img)
     response = make_response(buffer.tobytes())
     response.headers['Content-Type'] = 'image/jpg'
