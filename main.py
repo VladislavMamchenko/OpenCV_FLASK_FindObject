@@ -2,6 +2,9 @@ import cv2
 from flask import Flask, request, make_response, render_template
 import base64
 import numpy as np
+import imutils
+from matplotlib import pyplot as plt
+import python_utils
 import urllib
 
 
@@ -13,23 +16,7 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
-def Filter_Fudiao(src_img):
-    # filter=np.array([[-1,0,0],[0,0,0],[0,0,1]])
-    filter = np.array([[-1, 0], [0, 1]])
-    row=src_img.shape[0]
-    col=src_img.shape[1]
-    new_img=np.zeros([row,col],dtype=np.uint8)
-    for i in range(row-1):
-        for j in range(col-1):
-            new_value = np.sum(src_img[i:i + 2, j:j + 2] * filter) + 128  # point multiply
-            if new_value > 255:
-                new_value = 255
-            elif new_value < 0:
-                new_value = 0
-            else:
-                pass
-            new_img[i, j]=new_value
-    return new_img
+
 
 # вивід вхідного зображення
 @app.route('/downloaded_photo')
@@ -42,30 +29,51 @@ def downloaded_photo():
 
 @app.route('/output_photo')
 def output_photo():
-    hsv_min = np.array((2, 28, 65), np.uint8)
-    hsv_max = np.array((26, 238, 255), np.uint8)
+
 
     before_img = cv2.imread('images/1.jpg')
 
+
+    # Кількісно визначаємо кольори
+    # before_img = _utils.quantify_colors(img_small, 32, 10)
+
     #переведення картинки в сірий
     imgray = cv2.cvtColor(before_img, cv2.COLOR_BGR2GRAY)
+
+
+    #фільтруємо зображення(можно також використати розмиття)
+    #параметри (зображення(сіре), діаметр(скільки пікселів буде охоплено),цвітовий вимір(як багато пікселів з однаковим кольором будуть змішуватися,координатний вимір
+    #(як багато пікселів будуть змішуватися,які будуть схожі за координатами)
+    filtered = cv2.bilateralFilter(imgray,11,50,100)
+
+    #пошук країв зображення методом Кенні
+    edges = cv2.Canny(filtered, 30, 100)
+
     #маніпулятор ТРЕШ порогове значення
     thresh = 100
     #бінарізація + маніпулятори(агрументи трешхолд)
-    ret, thresh = cv2.threshold(imgray,thresh, 255, 0)
+    #Також thresh виступає як маска
+    ret, thresh = cv2.threshold(filtered, thresh, 255, 0)
     #Знаходимо контури
+    #Параметри (зображення,режим знаходження контурів(RETR_TREE - ієрархічний порядок контурів),метод знаходження контурів(сімпл більш оптимізований))
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    #пусте зображення для контурів
-    img_contours = np.zeros(before_img.shape)
+    #зчитуємо контури за домоголою бібліотеки imutils
+    #all_contours = imutils.grab_contours(contours.copy())
 
+
+    #якщо закоментувати,то на виході буде вирізане зображення без контурів
     orig_with_cont = before_img
     #малюємо контури на пустому зображенні
     cv2.drawContours(orig_with_cont, contours, -1, (0, 255, 0), 3)
 
+    #"випалюємо" фон заданий маскою
+    #betwise_(and/or/not) - побітові операції з зображеннями
+    masked = cv2.bitwise_and(before_img, before_img, mask=thresh)
+    masked[thresh < 2] = [255, 255, 255]
 
     #виведення вихідного зображення
-    output_img = orig_with_cont
+    output_img = masked
 
     retval, buffer = cv2.imencode('.jpg', output_img)
     response = make_response(buffer.tobytes())
