@@ -1,25 +1,65 @@
 import cv2
-from flask import Flask, request, make_response, render_template
-import base64
+from flask import Flask, request, make_response, render_template, flash, url_for,redirect
+# import base64
+import os
+import urllib.request
+from werkzeug.utils import secure_filename
 import numpy as np
-import imutils
-from matplotlib import pyplot as plt
-import python_utils
-import urllib
+# import imutils
+# from matplotlib import pyplot as plt
+# import python_utils
+# import urllib
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField, TextAreaField, BooleanField
+from wtforms.validators import DataRequired
+from wtforms.validators import InputRequired
 
 
 app = Flask(__name__)
 
+UPLOAD_FOLDER = 'images/'
 
+app.secret_key = "secret key"
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg'])
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# метод завантаження користувацької картинки
+@app.route('/', methods=['POST'])
+def upload_image():
+    if 'file' not in request.files:
+        flash('Лише png, jpg,jpeg')
+        return redirect(request.url)
+    file = request.files['file']
+    if file.filename == '':
+        flash('Картинку не обрано')
+        return redirect(request.url)
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], '1.jpg'))
+        # print('upload_image filename: ' + filename)
+        flash('Картинка успішно завантажена')
+        return render_template('index.html', filename=filename)
+    else:
+        flash('Allowed image types are - png, jpg, jpeg, gif')
+        return redirect(request.url)
 
+
+@app.route('/display/<filename>')
+def display_image(filename):
+    # print('display_image filename: ' + filename)
+    return redirect(url_for('static', filename='uploads/' + filename), code=301)
 
 # вивід вхідного зображення
-@app.route('/downloaded_photo')
+@app.route('/downloaded_photo', methods=['GET', 'POST'])
 def downloaded_photo():
     img = cv2.imread('images/1.jpg')
     retval, buffer = cv2.imencode('.jpg', img)
@@ -29,37 +69,28 @@ def downloaded_photo():
 
 @app.route('/output_photo')
 def output_photo():
-
-
     before_img = cv2.imread('images/1.jpg')
-
-
-    # Кількісно визначаємо кольори
-    # before_img = _utils.quantify_colors(img_small, 32, 10)
-
-    #переведення картинки в сірий
+    result = before_img.copy()
+    # переведення картинки в сірий
     imgray = cv2.cvtColor(before_img, cv2.COLOR_BGR2GRAY)
 
+    # фільтруємо зображення(можно також використати розмиття)
+    # параметри (зображення(сіре), діаметр(скільки пікселів буде охоплено),цвітовий вимір(як багато пікселів з однаковим кольором будуть змішуватися,координатний вимір
+    # (як багато пікселів будуть змішуватися,які будуть схожі за координатами)
+    filtered = cv2.bilateralFilter(imgray, 11, 50, 100)
 
-    #фільтруємо зображення(можно також використати розмиття)
-    #параметри (зображення(сіре), діаметр(скільки пікселів буде охоплено),цвітовий вимір(як багато пікселів з однаковим кольором будуть змішуватися,координатний вимір
-    #(як багато пікселів будуть змішуватися,які будуть схожі за координатами)
-    filtered = cv2.bilateralFilter(imgray,11,50,100)
+    # пошук країв зображення методом Кенні
 
-    #пошук країв зображення методом Кенні
+    # маніпулятор ТРЕШ порогове значення
+    # бінарізація + маніпулятори(агрументи трешхолд)
+    # Також thresh виступає як маска
+    ret, thresh = cv2.threshold(filtered, 100, 255, 0)
 
+    # пошук країв методом Кенні
+    edges = cv2.Canny(filtered, 30, 100)
 
-    #маніпулятор ТРЕШ порогове значення
-    thresh = 100
-    #бінарізація + маніпулятори(агрументи трешхолд)
-    #Також thresh виступає як маска
-    ret, thresh = cv2.threshold(filtered, thresh, 255, 0)
-
-    #пошук країв методом Кенні
-    edges = cv2.Canny(thresh, 30, 100)
-
-    #Знаходимо контури
-    #Параметри (зображення,режим знаходження контурів(RETR_TREE - ієрархічний порядок контурів),метод знаходження контурів(сімпл більш оптимізований))
+    # Знаходимо контури
+    # Параметри (зображення,режим знаходження контурів(RETR_TREE - ієрархічний порядок контурів),метод знаходження контурів(сімпл більш оптимізований))
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     max_area = 0
@@ -77,29 +108,18 @@ def output_photo():
             max_contour = approx
 
 
-    #створюємо чисте зображення з розмірами оригіналу
-    clear_con_img = np.ones(before_img.shape[:2], dtype="uint8") * 255
-    #малюємо контури на чистому зображенні
-    #передаємо чисте зображення,контур, ?? , колір , ?? (відповідає за товщину контура а з -1 за заливку
-    filled_cont = cv2.drawContours(clear_con_img, [max_contour], -1, (0, 0, 255), -1)
+    mask = np.zeros_like(before_img)
+    cv2.drawContours(mask, [max_contour], -1, (255, 255, 255), -1)
+    out = np.zeros_like(before_img)  # Extract out the object and place into output image
+    out[mask == 255] = before_img[mask == 255]
 
+    # виведення вихідного зображення
+    output_img = out
 
-    #"випалюємо" фон заданий маскою
-    #betwise_(and/or/not) - побітові операції з зображеннями
-    masked = cv2.bitwise_not(before_img, before_img, mask=filled_cont)
-
-
-
-
-
-    #виведення вихідного зображення
-    output_img = masked
 
     retval, buffer = cv2.imencode('.png', output_img)
     response = make_response(buffer.tobytes())
     response.headers['Content-Type'] = 'image/png'
-
-
 
     return response
 
