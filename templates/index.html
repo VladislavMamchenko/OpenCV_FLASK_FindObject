@@ -115,6 +115,7 @@ div.inline{
                           {% if messages %}
                             <ul>
                             {% for message in messages %}
+
                               <li>{{ message }}</li>
                             {% endfor %}
                             </ul>
@@ -148,8 +149,9 @@ div.inline{
                 <div class="inline">
                                 <figure>
                                 <img src="{{ url_for('output_photo') }}" width="300" height="300" alt="" class="img-thumbnail">
+<!--                                <img src="{{ url_for('output_photo', param1 = request.form.get('slider1')) }}" width="300" height="300" alt="" class="img-thumbnail">-->
                                 <figcaption>
-                                    Output  </figcaption>
+                                    Вихідне зображення </figcaption>
                                 </figure>
                 </div>
 
@@ -159,30 +161,30 @@ div.inline{
 
 
 
-                        <form name="uploader" enctype="multipart/form-data" method="POST" action="test">
+                        <form enctype="multipart/form-data" method="POST" action="/edit_value">
                                 <div class="slidecontainer">
-                                    value1
-                                  <input type="range" min="1" max="100" value="50" class="slider" name="slider1">
+                                    Порогове значення {{request.form.get('slider1')}}
+                                  <input type="range" min="1" max="255" value="{{request.form.get('slider1')}}" class="slider" name="slider1">
                                 </div>
                             <div class="slidecontainer">
-                                value2
-                                  <input type="range" min="1" max="100" value="50" class="slider" name="slider2">
+                                Максимальне значення {{request.form.get('slider2')}}
+                                  <input type="range" min="1" max="255" value="{{request.form.get('slider2')}}" class="slider" name="slider2">
                                 </div>
                             <div class="slidecontainer">
-                                value3
-                                  <input type="range" min="1" max="100" value="50" class="slider" name="slider3">
+                                value3 {{request.form.get('slider3')}}
+                                  <input type="range" min="1" max="100" value="{{request.form.get('slider3')}}" class="slider" name="slider3">
                                 </div>
                             <div class="slidecontainer">
-                                value4
-                                  <input type="range" min="1" max="100" value="50" class="slider" name="slider4">
+                                value4 {{request.form.get('slider4')}}
+                                  <input type="range" min="1" max="100" value="{{request.form.get('slider4')}}" class="slider" name="slider4">
                                 </div>
                             <div class="slidecontainer">
-                                value5
-                                  <input type="range" min="1" max="100" value="50" class="slider" name="slider5">
+                                value5 {{request.form.get('slider5')}}
+                                  <input type="range" min="1" max="100" value="{{request.form.get('slider5')}}" class="slider" name="slider5">
                                 </div>
-                                 <input type="submit" value="Send" class="btn btn-info">  <a href="http://127.0.0.1:5000/output_photo" download>
+                                 <input type="submit" value="Обробка" class="btn btn-info">  <a href="http://127.0.0.1:5000/output_photo" download>
                                      <a href="http://127.0.0.1:5000/output_photo" download>
-                                    <button class="btn btn-info">Save img</button> </a> </a>
+                                    <button class="btn btn-info">Зберегти картинку</button> </a> </a>
                         </form>
                 </div>
 
@@ -207,7 +209,7 @@ div.inline{
 
                         <figure>
           <img src="{{ url_for('output_photo3') }}" width="190" height="190" alt="" class="img-thumbnail">
-          <figcaption>Filtered + Thrash</figcaption>
+          <figcaption>Filtered + Threshold</figcaption>
           </figure>
 
                                     <figure>
@@ -216,8 +218,8 @@ div.inline{
           </figure>
 
                                     <figure>
-          <img src="{{ url_for('output_photo5') }}" width="190" height="190" alt="" class="img-thumbnail">
-          <figcaption>Output image</figcaption>
+          <img src="{{ url_for('output_photo5') }}" width="600" height="600" alt="" class="img-thumbnail">
+          <figcaption> Hist </figcaption>
           </figure>
 
         </div>
